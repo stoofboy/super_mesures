@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#7c5cff">
+<meta name="description" content="Révise les mesures en cm et mm en t'amusant (CE2). Sans pub, fonctionne hors-ligne.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Super Mesures">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Les Super Mesures</title>
+
+<style>
+/* =====================================================================
+   1. VARIABLES & BASE
+   ===================================================================== */
+:root{
+  --violet:#7c5cff; --violet-d:#5a3fd6;
+  --pink:#ff7eb6;   --yellow:#ffd23f;
+  --green:#2ecc8f;  --green-d:#1fa571;
+  --blue:#38b6ff;   --orange:#ff9f43;
+  --red:#ff6b6b;
+  --ink:#2d2a4a;    --card:#ffffff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{
+  font-family:"Baloo 2","Nunito","Trebuchet MS","Comic Sans MS",ui-rounded,system-ui,sans-serif;
+  background:linear-gradient(160deg,#e9f6ff 0%,#fff3e0 55%,#ffe9f3 100%) fixed;
+  color:var(--ink);
+  touch-action:manipulation;          /* évite le zoom au double-tap */
+  -webkit-user-select:none;user-select:none;
+  overscroll-behavior:none;
+}
+#app{max-width:640px;margin:0 auto;min-height:100dvh;position:relative}
+.screen{
+  display:none;flex-direction:column;gap:12px;min-height:100dvh;
+  padding:max(12px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));
+}
+.screen.active{display:flex;animation:pop .25s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Boutons */
+.btn{
+  font:inherit;font-weight:800;font-size:20px;color:#fff;border:0;border-radius:18px;
+  padding:12px 20px;cursor:pointer;background:var(--violet);
+  box-shadow:0 5px 0 var(--violet-d);transition:transform .08s, box-shadow .08s;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--violet-d)}
+.btn.big{font-size:24px;padding:14px 22px;width:100%}
+.btn.green{background:var(--green);box-shadow:0 5px 0 var(--green-d)}
+.btn.green:active{box-shadow:0 1px 0 var(--green-d)}
+.btn:disabled{opacity:.45;box-shadow:0 5px 0 #8a8aa0;background:#a8a8c0}
+.icon-btn{
+  font:inherit;font-size:22px;font-weight:800;width:46px;height:46px;border-radius:50%;border:0;
+  background:#fff;box-shadow:0 3px 0 #d9d4f5;cursor:pointer;color:var(--ink);
+}
+.icon-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #d9d4f5}
+
+/* =====================================================================
+   2. ACCUEIL
+   ===================================================================== */
+.home-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chip{background:#fff;border-radius:999px;padding:6px 14px;font-weight:800;font-size:18px;box-shadow:0 3px 0 #d9d4f5}
+h1{margin:4px 0 0;text-align:center;font-size:clamp(30px,8vw,44px);line-height:1.05;color:var(--violet-d)}
+h1 small{display:block;font-size:.45em;color:var(--ink);opacity:.75;margin-top:6px;font-weight:700}
+.logo{font-size:64px;text-align:center;animation:bounce 2.2s ease-in-out infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.levels{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap}
+.levels span{font-weight:700}
+.seg{border:0;font:inherit;font-weight:800;font-size:17px;padding:8px 16px;border-radius:14px;background:#fff;color:var(--ink);box-shadow:0 3px 0 #d9d4f5;cursor:pointer}
+.seg.on{background:var(--yellow);box-shadow:0 3px 0 #d6a900}
+.cards{display:flex;flex-direction:column;gap:12px}
+.game-card{
+  display:flex;align-items:center;gap:14px;text-align:left;width:100%;border:0;cursor:pointer;
+  font:inherit;color:#fff;border-radius:24px;padding:14px 16px;
+  box-shadow:0 6px 0 rgba(0,0,0,.18);
+}
+.game-card:active{transform:translateY(5px);box-shadow:0 1px 0 rgba(0,0,0,.18)}
+.game-card .em{font-size:48px;line-height:1}
+.game-card b{display:block;font-size:22px}
+.game-card span{font-size:15px;font-weight:600;opacity:.95}
+.c1{background:linear-gradient(135deg,#ff8a5c,#ff5e7e)}
+.c2{background:linear-gradient(135deg,#4dabf7,#7c5cff)}
+.c3{background:linear-gradient(135deg,#34d399,#14b8a6)}
+.home-bottom{display:flex;gap:10px;margin-top:auto;justify-content:center;flex-wrap:wrap}
+.home-bottom .btn{font-size:17px;padding:10px 16px}
+
+/* =====================================================================
+   3. ÉCRAN DE JEU
+   ===================================================================== */
+.bar{display:flex;align-items:center;gap:10px}
+.bar h2{flex:1;margin:0;font-size:clamp(17px,4.6vw,22px);text-align:center;line-height:1.1}
+.streak{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800}
+.streak .dots{display:flex;gap:6px}
+.streak .dot{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid #e1dcf7;transition:.25s}
+.streak .dot.on{background:var(--yellow);border-color:#e6ac00;transform:scale(1.15)}
+.mascot{display:flex;align-items:center;gap:10px}
+.fox{font-size:44px;line-height:1}
+.bubble{background:#fff;border-radius:18px;padding:8px 14px;font-weight:700;font-size:16px;box-shadow:0 3px 0 #d9d4f5;position:relative}
+.bubble::before{content:"";position:absolute;left:-8px;top:50%;margin-top:-8px;border:8px solid transparent;border-right-color:#fff;border-left:0}
+.visual{background:#fff;border-radius:22px;padding:8px;box-shadow:0 4px 0 #d9d4f5}
+.visual svg{width:100%;height:auto;display:block}
+.sticker{text-align:center;font-weight:800;font-size:19px;padding:12px;color:var(--violet-d)}
+.sticker .gear{display:inline-block;animation:spin 5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.prompt{text-align:center;font-weight:800;font-size:clamp(24px,7vw,34px);line-height:1.5;padding:4px 0}
+.blank{
+  display:inline-block;vertical-align:middle;min-width:68px;height:56px;margin:0 4px;padding:0 8px;
+  font:inherit;font-size:inherit;font-weight:800;color:var(--violet-d);
+  background:#fff;border:3px dashed #b9a9ff;border-radius:14px;cursor:pointer;
+}
+.blank.active{border-style:solid;border-color:var(--violet);box-shadow:0 0 0 4px rgba(124,92,255,.2)}
+.blank.active:empty::after{content:"";display:inline-block;width:3px;height:30px;background:var(--violet);vertical-align:middle;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+
+/* Clavier numérique géant (évite le clavier du téléphone) */
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:auto}
+.key{
+  font:inherit;font-size:28px;font-weight:800;height:clamp(54px,9.5vh,68px);border:0;border-radius:16px;
+  background:#fff;color:var(--ink);box-shadow:0 4px 0 #d9d4f5;cursor:pointer;
+}
+.key:active{transform:translateY(3px);box-shadow:0 1px 0 #d9d4f5}
+.key.del{background:#ffe0b8;box-shadow:0 4px 0 #e5b270}
+.key.ok{background:var(--green);color:#fff;box-shadow:0 4px 0 var(--green-d)}
+
+/* Retours (bravo / correction) */
+.feedback{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.fb{border-radius:20px;padding:14px 16px;background:#fff;border:4px solid var(--green);font-size:18px;font-weight:600;line-height:1.35}
+.fb.ko{border-color:var(--orange);background:#fffaf0}
+.fb-title{font-size:26px;font-weight:800;margin-bottom:4px}
+.fb p{margin:6px 0 0}
+.star-msg{color:#b8860b;font-weight:800}
+.bar-row{margin-top:8px;font-weight:700;font-size:16px}
+.bar-row .track{height:16px;border-radius:99px;background:#eee;overflow:hidden;margin-top:3px}
+.bar-row .track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),var(--violet))}
+
+/* Jeu 3 : tri */
+#sortArea{display:flex;flex-direction:column;gap:14px}
+.scale{display:flex;justify-content:space-between;font-weight:800;color:var(--violet-d);font-size:16px;padding:0 4px}
+.slots{display:flex;gap:8px}
+.slot{
+  flex:1;min-height:70px;border:3px dashed #b9a9ff;border-radius:16px;background:rgba(255,255,255,.7);
+  display:flex;align-items:center;justify-content:center;padding:4px;
+}
+.slot-n{font-size:26px;font-weight:800;color:#c9bfff}
+.pool{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;min-height:70px;padding:10px;border-radius:18px;background:rgba(255,255,255,.55)}
+.tag{
+  font:inherit;font-size:clamp(17px,4.6vw,22px);font-weight:800;color:#fff;border:0;border-radius:14px;
+  padding:12px 10px;min-width:64px;cursor:grab;box-shadow:0 4px 0 rgba(0,0,0,.2);
+  background:linear-gradient(135deg,#ff8a5c,#ff5e7e);
+}
+.tag:nth-child(3n+2){background:linear-gradient(135deg,#4dabf7,#7c5cff)}
+.tag:nth-child(3n){background:linear-gradient(135deg,#34d399,#14b8a6)}
+.slot .tag{width:100%;min-width:0;padding:10px 2px}
+
+/* =====================================================================
+   4. BADGES
+   ===================================================================== */
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.badge{background:#fff;border-radius:20px;padding:14px 10px;text-align:center;box-shadow:0 4px 0 #d9d4f5}
+.badge .ic{font-size:44px}
+.badge b{display:block;font-size:17px}
+.badge small{font-weight:600;opacity:.8}
+.badge.locked{filter:grayscale(1);opacity:.5}
+
+/* =====================================================================
+   5. EFFETS : étoile, confettis, toast
+   ===================================================================== */
+#starOverlay{
+  position:fixed;inset:0;background:rgba(45,42,74,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;
+}
+.star-card{background:#fff;border-radius:28px;padding:26px 22px;text-align:center;max-width:340px;animation:zoom .45s cubic-bezier(.2,1.6,.4,1)}
+.star-card .big{font-size:96px;line-height:1;animation:bounce 1s ease-in-out infinite}
+.star-card h3{margin:6px 0;font-size:28px;color:#b8860b}
+@keyframes zoom{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+#confetti span{position:fixed;top:-50px;z-index:60;pointer-events:none;animation:fall 2.2s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg)}}
+#toast{
+  position:fixed;left:50%;top:max(14px,env(safe-area-inset-top));transform:translate(-50%,-140%);z-index:70;
+  background:var(--ink);color:#fff;padding:12px 18px;border-radius:18px;font-weight:800;text-align:center;
+  transition:transform .35s cubic-bezier(.2,1.4,.4,1);max-width:90vw;
+}
+#toast.show{transform:translate(-50%,0)}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+
+<body>
+<div id="app">
+
+  <!-- ===================== ACCUEIL ===================== -->
+  <section id="home" class="screen active">
+    <div class="home-top">
+      <div class="chip">⭐ <span id="homeStars">0</span></div>
+      <button class="icon-btn" id="soundBtn" aria-label="Son">🔊</button>
+    </div>
+
+    <div class="logo">📏</div>
+    <h1>Les Super Mesures<small>Centimètres &amp; millimètres · CE2</small></h1>
+
+    <div class="levels">
+      <span>Niveau :</span>
+      <button class="seg" data-level="1">🌱 Facile</button>
+      <button class="seg" data-level="2">🚀 Défi</button>
+    </div>
+
+    <div class="cards">
+      <button class="game-card c1" data-game="g1">
+        <div class="em">🐛</div>
+        <div><b>L'apprenti mesureur</b><span>Lis la mesure sur la règle</span></div>
+      </button>
+      <button class="game-card c2" data-game="g2">
+        <div class="em">⚙️</div>
+        <div><b>La machine à convertir</b><span>cm ➜ mm et mm ➜ cm</span></div>
+      </button>
+      <button class="game-card c3" data-game="g3">
+        <div class="em">🧺</div>
+        <div><b>Le tri des longueurs</b><span>Range de la plus petite à la plus grande</span></div>
+      </button>
+    </div>
+
+    <div class="home-bottom">
+      <button class="btn" id="badgesBtn">🏅 Mes badges</button>
+      <button class="btn green" id="installBtn" hidden>📲 Installer l'appli</button>
+    </div>
+  </section>
+
+  <!-- ===================== JEU ===================== -->
+  <section id="game" class="screen">
+    <header class="bar">
+      <button class="icon-btn" id="backBtn" aria-label="Retour">←</button>
+      <h2 id="gameTitle"></h2>
+      <div class="chip">⭐ <span id="gameStars">0</span></div>
+    </header>
+
+    <div class="streak" title="5 bonnes réponses d'affilée = 1 étoile d'or">
+      <div class="dots" id="dots"></div>
+      <span>= ⭐</span>
+    </div>
+
+    <div class="mascot"><div class="fox">🦊</div><div class="bubble" id="bubble"></div></div>
+
+    <div class="visual" id="visual"></div>
+    <div class="prompt" id="prompt"></div>
+
+    <!-- Jeu 3 uniquement -->
+    <div id="sortArea" hidden>
+      <div class="scale"><span>◀ le plus petit</span><span>le plus grand ▶</span></div>
+      <div class="slots" id="slots"></div>
+      <div class="pool" id="pool"></div>
+      <button class="btn green big" id="checkSort" disabled>Vérifier ✔</button>
+    </div>
+
+    <!-- Jeux 1 & 2 : clavier numérique -->
+    <div class="keypad" id="keypad"></div>
+
+    <div class="feedback" id="feedback" hidden></div>
+  </section>
+
+  <!-- ===================== BADGES ===================== -->
+  <section id="badges" class="screen">
+    <header class="bar">
+      <button class="icon-btn" id="badgesBack" aria-label="Retour">←</button>
+      <h2>🏅 Mes badges</h2>
+      <div class="chip">⭐ <span id="badgeStars">0</span></div>
+    </header>
+    <div class="badge-grid" id="badgeGrid"></div>
+  </section>
+</div>
+
+<div id="starOverlay" hidden>
+  <div class="star-card">
+    <div class="big">⭐</div>
+    <h3>Étoile d'or !</h3>
+    <p style="font-weight:700;margin:0 0 14px">5 bonnes réponses d'affilée. Quelle championne !</p>
+    <button class="btn green" id="starOk">Super !</button>
+  </div>
+</div>
+<div id="confetti"></div>
+<div id="toast" role="status"></div>
+
+<noscript>Cette application a besoin de JavaScript pour fonctionner.</noscript>
+
+<script>
+/* =======================================================================
+   LES SUPER MESURES — PWA de révision CE2 (cm / mm)
+   Tout le code est dans ce fichier. Aucune dépendance externe.
+   ======================================================================= */
+(() => {
+'use strict';
+
+/* ---------- 1. Petits utilitaires ---------- */
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const rnd  = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;   // entier aléatoire [a ; b]
+const pick = arr => arr[rnd(0, arr.length - 1)];
+const shuffle = arr => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+/* ---------- 2. Sauvegarde locale (étoiles, badges, niveau) ---------- */
+const KEY = 'super-mesures-v1';
+const DEFAULTS = { stars: 0, level: 1, sound: true, good: { g1: 0, g2: 0, g3: 0 }, badges: [] };
+let store = loadStore();
+function loadStore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || '{}');
+    return { ...DEFAULTS, ...s, good: { ...DEFAULTS.good, ...(s.good || {}) }, badges: s.badges || [] };
+  } catch { return JSON.parse(JSON.stringify(DEFAULTS)); }
+}
+function saveStore() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch { /* stockage indisponible : on continue */ } }
+
+/* ---------- 3. Sons (WebAudio, aucun fichier) ---------- */
+let actx;
+function tone(freqs, dur = 0.12) {
+  if (!store.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    freqs.forEach((f, i) => {
+      const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + i * dur;
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.02);
+    });
+  } catch { /* son non disponible */ }
+}
+const sndOk   = () => tone([523, 659, 784]);
+const sndKo   = () => tone([330, 294], 0.16);
+const sndStar = () => tone([523, 659, 784, 1047], 0.13);
+
+/* ---------- 4. Badges ---------- */
+const BADGES = [
+  { id: 'first',   icon: '⭐', name: 'Première étoile',      desc: "Gagne ta 1ʳᵉ étoile d'or",              ok: s => s.stars >= 1 },
+  { id: 'three',   icon: '🌟', name: 'Trois étoiles',         desc: "Gagne 3 étoiles d'or",                  ok: s => s.stars >= 3 },
+  { id: 'ten',     icon: '🏆', name: 'Super championne',      desc: "Gagne 10 étoiles d'or",                 ok: s => s.stars >= 10 },
+  { id: 'lynx',    icon: '🔍', name: 'Œil de lynx',           desc: '10 mesures réussies sur la règle',      ok: s => s.good.g1 >= 10 },
+  { id: 'machine', icon: '⚙️', name: 'Maître convertisseur',  desc: '10 conversions réussies',               ok: s => s.good.g2 >= 10 },
+  { id: 'sort',    icon: '🧺', name: 'Pro du rangement',      desc: '10 rangements réussis',                 ok: s => s.good.g3 >= 10 },
+  { id: 'all',     icon: '🌈', name: 'Super mesureuse',       desc: 'Réussis 5 fois chacun des 3 jeux',      ok: s => s.good.g1 >= 5 && s.good.g2 >= 5 && s.good.g3 >= 5 },
+];
+function checkBadges() {
+  const fresh = BADGES.filter(b => !store.badges.includes(b.id) && b.ok(store));
+  fresh.forEach(b => store.badges.push(b.id));
+  return fresh;
+}
+
+/* ---------- 5. Dessin de la règle graduée (SVG) ---------- */
+const COLORS = ['#ff6b6b', '#4dabf7', '#51cf66', '#ffa94d', '#cc5de8', '#f06595'];
+const newLook = () => ({ obj: pick(['pencil', 'worm', 'ribbon']), color: pick(COLORS) });
+
+/** Objet à mesurer : son bout de droite tombe EXACTEMENT à L mm. */
+function objectSVG(L, look, u, m) {
+  const x0 = m, x1 = m + L * u, w = x1 - x0;
+  if (look.obj === 'pencil') {                      // crayon
+    const tip = Math.min(46, w * 0.4), er = Math.min(18, w * 0.15);
+    return `<rect x="${x0}" y="16" width="${w - tip}" height="40" fill="${look.color}"/>
+      <rect x="${x0}" y="16" width="${er}" height="40" fill="#ff8fa3"/>
+      <rect x="${x0 + er}" y="16" width="5" height="40" fill="#cfd4da"/>
+      <polygon points="${x1 - tip},16 ${x1 - tip},56 ${x1},36" fill="#f6d9a8"/>
+      <polygon points="${x1 - tip * .3},30 ${x1 - tip * .3},42 ${x1},36" fill="#444"/>`;
+  }
+  if (look.obj === 'worm') {                        // chenille rigolote
+    return `<rect x="${x0}" y="16" width="${w}" height="40" rx="20" fill="${look.color}"/>
+      <circle cx="${x1 - 20}" cy="30" r="7" fill="#fff"/><circle cx="${x1 - 18}" cy="30" r="3.5" fill="#222"/>
+      <path d="M${x1 - 30} 43 q10 8 20 0" stroke="#222" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  }
+  let dots = '';                                    // ruban à pois
+  for (let x = x0 + 22; x < x1 - 8; x += 36) dots += `<circle cx="${x}" cy="36" r="5" fill="#fff" opacity=".85"/>`;
+  return `<rect x="${x0}" y="22" width="${w}" height="28" fill="${look.color}"/>${dots}`;
+}
+
+/**
+ * Règle de 0 à 10 cm (1 mm = 9 unités du viewBox).
+ * explain = true → colore les cm (blocs de "10 mm") et les mm restants.
+ */
+function rulerSVG(L, { look, explain = false } = {}) {
+  look = look || newLook();
+  const u = 9, m = 30, W = 1010, top = 80, H = 190;
+  const xEnd = m + L * u;
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Règle graduée">`;
+  s += objectSVG(L, look, u, m);
+  s += `<rect x="8" y="${top}" width="${W - 14}" height="106" rx="12" fill="#ffe6a3" stroke="#e0b84a" stroke-width="3"/>`;
+
+  if (explain) {                                    // blocs colorés pour la correction
+    const c = Math.floor(L / 10), r = L % 10;
+    for (let i = 0; i < c; i++) {
+      const x = m + i * 10 * u;
+      s += `<rect x="${x}" y="${top + 2}" width="${10 * u}" height="102" fill="${i % 2 ? '#6ec1ff' : '#7ee0a8'}" opacity=".5"/>
+            <text x="${x + 5 * u}" y="${top + 98}" text-anchor="middle" font-size="26" font-weight="800" fill="#2d2a4a">10 mm</text>`;
+    }
+    if (r) {
+      const x = m + c * 10 * u;
+      s += `<rect x="${x}" y="${top + 2}" width="${r * u}" height="102" fill="#ffa94d" opacity=".6"/>
+            <text x="${x + r * u / 2}" y="${top + 98}" text-anchor="middle" font-size="24" font-weight="800" fill="#2d2a4a">${r >= 7 ? r + ' mm' : r}</text>`;
+    }
+  }
+
+  // Trait pointillé : du bout de l'objet jusqu'à la règle
+  s += `<line x1="${xEnd}" y1="58" x2="${xEnd}" y2="${top + 64}" stroke="#333" stroke-width="3" stroke-dasharray="6 6" opacity=".75"/>`;
+
+  // Graduations : 1 trait par mm (plus long tous les 5 mm, encore plus tous les cm)
+  for (let i = 0; i <= 100; i++) {
+    const x = m + i * u, len = i % 10 === 0 ? 44 : i % 5 === 0 ? 32 : 20;
+    s += `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + len}" stroke="#5b4a2e" stroke-width="${i % 10 === 0 ? 4 : i % 5 === 0 ? 3.2 : 2.6}"/>`;
+  }
+  for (let c = 0; c <= 10; c++) {
+    s += `<text x="${m + c * 10 * u}" y="${top + 74}" text-anchor="middle" font-size="34" font-weight="800" fill="#5b4a2e">${c}</text>`;
+  }
+  s += `<text x="${m + 100 * u + 22}" y="${top + 74}" font-size="30" font-weight="800" fill="#a07a1a">cm</text>`;
+  return s + '</svg>';
+}
+
+/** Texte d'explication pour une longueur L (en mm). */
+function explainLength(L) {
+  const c = Math.floor(L / 10), r = L % 10;
+  if (r === 0) return `Regarde, ${c} cm, c'est ${L} petits millimètres (${c} × 10 = ${L}).`;
+  if (c === 0) return `Il n'y a pas encore 1 cm : on compte seulement ${r} petits millimètres.`;
+  return `Regarde : ${L} mm = ${c} cm et ${r} mm. (${c} cm = ${c * 10} mm, puis on ajoute ${r} mm.)`;
+}
+
+/* ---------- 6. Générateurs de questions ---------- */
+
+/* Jeu 1 : l'apprenti mesureur */
+function genMeasure(level) {
+  const kind = level === 1 ? (Math.random() < 0.7 ? 'cm' : 'mm')
+                           : pick(['mm', 'cmmm', 'cmmm', 'cm', 'mm']);
+  let L;
+  if (kind === 'cm' || (level === 1 && kind === 'mm')) L = rnd(1, 10) * 10;   // longueurs "rondes"
+  else if (kind === 'cmmm') L = rnd(1, 9) * 10 + rnd(1, 9);
+  else L = rnd(6, 99);
+  const c = Math.floor(L / 10), r = L % 10, look = newLook();
+
+  const q = {
+    visual: rulerSVG(L, { look }),
+    explainVisual: rulerSVG(L, { look, explain: true }),
+    explain: explainLength(L),
+  };
+  if (kind === 'cm')      Object.assign(q, { prompt: 'Cet objet mesure {0} cm.',            fields: [L / 10],  answerText: `${L / 10} cm` });
+  else if (kind === 'mm') Object.assign(q, { prompt: 'Cet objet mesure {0} mm.',            fields: [L],       answerText: `${L} mm` });
+  else                    Object.assign(q, { prompt: 'Cet objet mesure {0} cm et {1} mm.',  fields: [c, r],    answerText: `${c} cm et ${r} mm` });
+  return q;
+}
+
+/* Jeu 2 : la machine à convertir */
+function genConvert(level) {
+  const type = level === 1 ? pick(['fact', 'c2m', 'm2c', 'c2m', 'm2c'])
+                           : pick(['c2m', 'm2c', 'dec', 'rec', 'dec', 'rec']);
+  const look = newLook();
+  const make = (L, extra) => ({
+    explainVisual: rulerSVG(L, { look, explain: true }),
+    visual: `<div class="sticker"><span class="gear">⚙️</span> Souviens-toi : <b>1 cm = 10 mm</b></div>`,
+    ...extra,
+  });
+
+  if (type === 'fact') {
+    return make(10, { prompt: '1 cm = {0} mm', fields: [10], answerText: '10 mm',
+      explain: 'Un centimètre est découpé en 10 petits millimètres.',
+      visual: `<div class="sticker"><span class="gear">⚙️</span> La machine à convertir t'attend !</div>` });
+  }
+  if (type === 'c2m') {
+    const c = rnd(1, 10);
+    return make(c * 10, { prompt: `${c} cm = {0} mm`, fields: [c * 10], answerText: `${c * 10} mm`,
+      explain: `Regarde, ${c} cm, c'est ${c * 10} petits millimètres : ${c} × 10 = ${c * 10}.` });
+  }
+  if (type === 'm2c') {
+    const c = rnd(1, 10), L = c * 10;
+    return make(L, { prompt: `${L} mm = {0} cm`, fields: [c], answerText: `${c} cm`,
+      explain: `Il y a 10 mm dans 1 cm. ${L} mm, c'est ${c} paquets de 10 mm, donc ${c} cm.` });
+  }
+  if (type === 'dec') {
+    const c = rnd(1, 9), r = rnd(1, 9), L = c * 10 + r;
+    return make(L, { prompt: `${L} mm = {0} cm et {1} mm`, fields: [c, r], answerText: `${c} cm et ${r} mm`,
+      explain: explainLength(L) });
+  }
+  const c = rnd(1, 9), r = rnd(1, 9), L = c * 10 + r;                         // 'rec' : recomposition
+  return make(L, { prompt: `${c} cm et ${r} mm = {0} mm`, fields: [L], answerText: `${L} mm`,
+    explain: `${c} cm = ${c * 10} mm, puis on ajoute ${r} mm : ${c * 10} + ${r} = ${L}.` });
+}
+
+/* Jeu 3 : le tri des longueurs */
+function genSort(level) {
+  const n = level === 1 ? 4 : 5;
+  const items = [];
+  let guard = 0;
+  while (items.length < n && guard++ < 800) {
+    const v = rnd(4, 100);                                                    // valeur en mm
+    if (items.some(it => Math.abs(it.v - v) < 4)) continue;                   // pas de valeurs trop proches
+    let label;
+    if (v % 10 === 0) label = Math.random() < 0.6 ? `${v / 10} cm` : `${v} mm`;   // piège : "30 mm" vs "5 cm"
+    else if (level === 2 && v > 10 && Math.random() < 0.35) label = `${Math.floor(v / 10)} cm ${v % 10} mm`;
+    else label = `${v} mm`;
+    items.push({ v, label });
+  }
+  items.forEach((it, i) => it.id = i);
+  const sortedIds = [...items].sort((a, b) => a.v - b.v).map(it => it.id);
+  let order;
+  do { order = shuffle(items.map(it => it.id)); } while (order.join() === sortedIds.join());
+  return { items, sortedIds, order, slots: Array(n).fill(null) };
+}
+
+/* ---------- 7. État du jeu & navigation ---------- */
+const GAMES = {
+  g1: { title: "🐛 L'apprenti mesureur",   gen: genMeasure, hint: "Où se termine l'objet sur la règle ?" },
+  g2: { title: '⚙️ La machine à convertir', gen: genConvert, hint: 'Complète le calcul !' },
+  g3: { title: '🧺 Le tri des longueurs',   gen: genSort,    hint: 'Touche les étiquettes pour les ranger.' },
+};
+const PRAISE = ['Bravo !', 'Super !', 'Génial !', 'Bien joué !', 'Excellent !', 'Quel talent !'];
+const COURAGE = ["Presque ! Regarde bien :", "Pas grave, on apprend !", "Courage, regarde :"];
+
+const G = { id: null, q: null, streak: 0, locked: false, active: 0, vals: [] };
+
+function show(id) {
+  $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+  window.scrollTo(0, 0);
+  if (id === 'home') renderHome();
+  if (id === 'badges') renderBadges();
+}
+
+function renderHome() {
+  $('#homeStars').textContent = store.stars;
+  $$('.seg').forEach(b => b.classList.toggle('on', +b.dataset.level === store.level));
+  $('#soundBtn').textContent = store.sound ? '🔊' : '🔇';
+}
+
+function renderBadges() {
+  $('#badgeStars').textContent = store.stars;
+  $('#badgeGrid').innerHTML = BADGES.map(b => `
+    <div class="badge ${store.badges.includes(b.id) ? '' : 'locked'}">
+      <div class="ic">${b.icon}</div><b>${b.name}</b><small>${b.desc}</small>
+    </div>`).join('');
+}
+
+function updateHud(forceDots) {
+  $('#gameStars').textContent = store.stars;
+  const filled = forceDots ?? G.streak;
+  $('#dots').innerHTML = Array.from({ length: 5 }, (_, i) => `<span class="dot ${i < filled ? 'on' : ''}"></span>`).join('');
+}
+
+function setBubble(t) { $('#bubble').textContent = t; }
+
+function startGame(id) {
+  G.id = id; G.streak = 0;
+  $('#gameTitle').textContent = GAMES[id].title;
+  show('game');
+  nextQuestion();
+}
+
+function nextQuestion() {
+  G.locked = false;
+  G.q = GAMES[G.id].gen(store.level);
+  $('#feedback').hidden = true;
+  setBubble(GAMES[G.id].hint);
+  updateHud();
+  if (G.id === 'g3') setupSort(); else setupFields();
+}
+
+/* ---------- 8. Jeux 1 & 2 : champs à compléter + clavier ---------- */
+function buildKeypad() {
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'];
+  $('#keypad').innerHTML = keys.map(k =>
+    `<button type="button" class="key ${k === 'del' ? 'del' : k === 'ok' ? 'ok' : ''}" data-k="${k}">${k === 'del' ? '⌫' : k === 'ok' ? 'OK ✔' : k}</button>`).join('');
+}
+
+function setupFields() {
+  const q = G.q;
+  $('#sortArea').hidden = true;
+  $('#keypad').hidden = false;
+  $('#visual').hidden = false;
+  $('#visual').innerHTML = q.visual;
+  G.vals = q.fields.map(() => '');
+  G.active = 0;
+  $('#prompt').innerHTML = q.prompt.replace(/\{(\d)\}/g, (_, i) => `<button type="button" class="blank" data-i="${i}" aria-label="réponse ${+i + 1}"></button>`);
+  paintBlanks();
+}
+
+function paintBlanks() {
+  $$('#prompt .blank').forEach(b => {
+    const i = +b.dataset.i;
+    b.textContent = G.vals[i];
+    b.classList.toggle('active', i === G.active && !G.locked);
+  });
+}
+
+function press(k) {
+  if (G.locked || G.id === 'g3') return;
+  if (k === 'del')      G.vals[G.active] = G.vals[G.active].slice(0, -1);
+  else if (k === 'ok')  return submitFields();
+  else if (G.vals[G.active].length < 3) G.vals[G.active] += k;
+  paintBlanks();
+}
+
+function submitFields() {
+  const empty = G.vals.findIndex(v => v === '');
+  if (empty !== -1) {                                   // il reste une case vide : on la sélectionne
+    const anyTyped = G.vals.some(v => v !== '');
+    G.active = empty; paintBlanks();
+    if (!anyTyped) { const p = $('#prompt'); p.classList.remove('shake'); void p.offsetWidth; p.classList.add('shake'); }
+    return;
+  }
+  const ok = G.q.fields.every((ans, i) => Number(G.vals[i]) === ans);
+  finish(ok);
+}
+
+/* ---------- 9. Jeu 3 : tri par étiquettes (tap + glisser-déposer sur ordinateur) ---------- */
+const tagHTML = it => `<button type="button" class="tag" draggable="true" data-id="${it.id}">${it.label}</button>`;
+
+function setupSort() {
+  $('#keypad').hidden = true;
+  $('#sortArea').hidden = false;
+  $('#visual').hidden = true;
+  $('#checkSort').hidden = false;
+  $('#prompt').innerHTML = 'Range de la <b>plus petite</b> à la <b>plus grande</b> longueur !';
+  renderSort();
+}
+
+function renderSort() {
+  const q = G.q;
+  $('#slots').innerHTML = q.slots.map((id, i) =>
+    `<div class="slot" data-slot="${i}">${id !== null ? tagHTML(q.items[id]) : `<span class="slot-n">${i + 1}</span>`}</div>`).join('');
+  const used = new Set(q.slots);
+  $('#pool').innerHTML = q.order.filter(id => !used.has(id)).map(id => tagHTML(q.items[id])).join('');
+  $('#checkSort').disabled = q.slots.includes(null);
+}
+
+function removeFromSlots(id) { G.q.slots = G.q.slots.map(s => (s === id ? null : s)); }
+
+function onSortClick(e) {
+  const tag = e.target.closest('.tag');
+  if (!tag || G.locked) return;
+  const id = +tag.dataset.id;
+  if (tag.closest('.slot')) removeFromSlots(id);                  // un tap sur une étiquette rangée la renvoie en bas
+  else { const i = G.q.slots.indexOf(null); if (i !== -1) G.q.slots[i] = id; }   // sinon : première case libre
+  renderSort();
+}
+
+function setupDnD() {
+  const area = $('#sortArea');
+  area.addEventListener('dragstart', e => { const t = e.target.closest('.tag'); if (t && !G.locked) e.dataTransfer.setData('text/plain', t.dataset.id); });
+  area.addEventListener('dragover', e => { if (e.target.closest('.slot, .pool')) e.preventDefault(); });
+  area.addEventListener('drop', e => {
+    if (G.locked) return;
+    const id = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    if (Number.isNaN(id)) return;
+    const slot = e.target.closest('.slot');
+    if (slot) { removeFromSlots(id); G.q.slots[+slot.dataset.slot] = id; e.preventDefault(); renderSort(); }
+    else if (e.target.closest('.pool')) { removeFromSlots(id); e.preventDefault(); renderSort(); }
+  });
+}
+
+function submitSort() {
+  if (G.locked || G.q.slots.includes(null)) return;
+  finish(G.q.slots.every((id, i) => id === G.q.sortedIds[i]));
+}
+
+/* ---------- 10. Résultat, étoiles, badges ---------- */
+function finish(ok) {
+  G.locked = true;
+  $('#keypad').hidden = true;
+  $('#checkSort').hidden = true;
+  paintBlanks();
+  const q = G.q;
+  let starWon = false;
+
+  if (ok) {
+    store.good[G.id]++; G.streak++;
+    if (G.streak >= 5) { G.streak = 0; store.stars++; starWon = true; }
+  } else {
+    G.streak = 0;                                     // ❗ aucune pénalité : la série repart simplement de zéro
+  }
+  const fresh = checkBadges();
+  saveStore();
+  updateHud(starWon ? 5 : undefined);
+
+  let html;
+  if (ok) {
+    html = `<div class="fb"><div class="fb-title">${pick(PRAISE)} ✅</div>
+      <p>${G.id === 'g3' ? "C'est le bon ordre !" : `Oui, c'est bien ${q.answerText}.`}</p>
+      ${starWon ? `<p class="star-msg">⭐ 5 d'affilée : tu gagnes une étoile d'or !</p>` : ''}</div>`;
+    setBubble(pick(PRAISE));
+    starWon ? sndStar() : sndOk();
+  } else {
+    let detail;
+    if (G.id === 'g3') {
+      const sorted = q.sortedIds.map(id => q.items[id]);
+      detail = `<p>On met tout en millimètres (1 cm = 10 mm). Voici le bon ordre :</p>` +
+        sorted.map(it => `<div class="bar-row">${it.label} = <b>${it.v} mm</b><div class="track"><i style="width:${it.v}%"></i></div></div>`).join('');
+    } else {
+      $('#visual').hidden = false;
+      $('#visual').innerHTML = q.explainVisual;      // la règle colorée apparaît pour expliquer
+      detail = `<p>La bonne réponse : <b>${q.answerText}</b></p><p>${q.explain}</p>`;
+    }
+    html = `<div class="fb ko"><div class="fb-title">${pick(COURAGE)} 💪</div>${detail}</div>`;
+    setBubble('Essaie la suivante, tu vas y arriver !');
+    sndKo();
+  }
+  html += `<button class="btn green big" id="nextBtn">Suivant ➜</button>`;
+  const fb = $('#feedback');
+  fb.innerHTML = html; fb.hidden = false;
+  fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  if (starWon) setTimeout(showStar, 350);
+  fresh.forEach((b, i) => setTimeout(() => toast(`🏅 Nouveau badge : ${b.name} !`), 900 + i * 2600));
+}
+
+function showStar() {
+  $('#starOverlay').hidden = false;
+  confetti();
+  clearTimeout(showStar.t);
+  showStar.t = setTimeout(() => { $('#starOverlay').hidden = true; }, 3500);
+}
+
+function confetti() {
+  const box = $('#confetti'), em = ['⭐', '✨', '🎉', '🌟', '💛'];
+  for (let i = 0; i < 28; i++) {
+    const s = document.createElement('span');
+    s.textContent = pick(em);
+    s.style.left = rnd(0, 100) + 'vw';
+    s.style.animationDelay = (Math.random() * 0.6) + 's';
+    s.style.fontSize = rnd(18, 34) + 'px';
+    box.appendChild(s);
+    setTimeout(() => s.remove(), 2900);
+  }
+}
+
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+/* ---------- 11. Branchement des événements ---------- */
+function init() {
+  buildKeypad();
+  setupDnD();
+  renderHome();
+
+  $$('.game-card').forEach(b => b.addEventListener('click', () => startGame(b.dataset.game)));
+  $$('.seg').forEach(b => b.addEventListener('click', () => { store.level = +b.dataset.level; saveStore(); renderHome(); }));
+  $('#soundBtn').addEventListener('click', () => { store.sound = !store.sound; saveStore(); renderHome(); tone([660]); });
+  $('#badgesBtn').addEventListener('click', () => show('badges'));
+  $('#badgesBack').addEventListener('click', () => show('home'));
+  $('#backBtn').addEventListener('click', () => show('home'));
+  $('#keypad').addEventListener('click', e => { const k = e.target.closest('.key'); if (k) press(k.dataset.k); });
+  $('#prompt').addEventListener('click', e => {
+    const b = e.target.closest('.blank');
+    if (b && !G.locked) { G.active = +b.dataset.i; paintBlanks(); }
+  });
+  $('#sortArea').addEventListener('click', onSortClick);
+  $('#checkSort').addEventListener('click', submitSort);
+  $('#feedback').addEventListener('click', e => { if (e.target.closest('#nextBtn')) nextQuestion(); });
+  $('#starOverlay').addEventListener('click', () => { $('#starOverlay').hidden = true; });
+
+  // Clavier physique (ordinateur / tablette avec clavier)
+  addEventListener('keydown', e => {
+    if (!$('#game').classList.contains('active') || G.id === 'g3') return;
+    if (G.locked) { if (e.key === 'Enter') nextQuestion(); return; }
+    if (/^\d$/.test(e.key)) press(e.key);
+    else if (e.key === 'Backspace') press('del');
+    else if (e.key === 'Enter') press('ok');
+  });
+}
+
+/* ---------- 12. PWA : service worker + bouton « Installer » ---------- */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => {}));
+}
+let deferredPrompt;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('#installBtn').hidden = false; });
+addEventListener('appinstalled', () => { $('#installBtn').hidden = true; });
+document.addEventListener('DOMContentLoaded', () => {
+  $('#installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt(); await deferredPrompt.userChoice;
+    deferredPrompt = null; $('#installBtn').hidden = true;
+  });
+});
+
+document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>
